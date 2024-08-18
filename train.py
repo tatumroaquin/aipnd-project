@@ -80,6 +80,8 @@ def save_checkpoint(arch, epochs, model, optimiser, save_dir):
     for layer in model.classifier:
         if isinstance(layer, torch.nn.Linear):
             hidden_layers.append(layer.out_features)
+    
+    print(hidden_layers)
 
     checkpoint = {
         "arch": arch,
@@ -157,7 +159,7 @@ def train_network(arch, epochs, learn_rate, hidden_units, has_gpu, data_dir, sav
             f"Total Accuracy: {accuracy/len(image_dataloaders['valid']):.3f}"
         )
 
-    model.class_to_id = image_datasets['train'].class_to_idx
+    model.class_to_idx = image_datasets["train"].class_to_idx
 
     save_checkpoint(arch, epochs, model, optimiser, save_dir)
 
@@ -183,14 +185,22 @@ def get_args():
     )
 
     parser.add_argument(
-        "--hidden_units", type=int, default=512, help="Specify the amount of hidden units on the hidden layer"
+        "--hidden_units",
+        type=int,
+        default=512,
+        help="Specify the amount of hidden units on the hidden layer",
     )
 
-    parser.add_argument("--epochs", type=int, default=6, help="Specify the number of epoch cycles to train the NN")
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=6,
+        help="Specify the number of epoch cycles to train the NN",
+    )
     parser.add_argument(
         "--save_dir",
         type=str,
-        default="checkpoint.pth",
+        default="",
         help="Specify path to save PyTorch checkpoint.pth file",
     )
 
@@ -204,7 +214,10 @@ def get_args():
 
     # Params Group
     parser.add_argument(
-        "data_dir", type=str, default="flowers", help="Specify path to the dataset directory"
+        "data_dir",
+        type=str,
+        default="flowers",
+        help="Specify path to the dataset directory",
     )
 
     return parser.parse_args()
