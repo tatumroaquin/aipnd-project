@@ -119,7 +119,7 @@ def load_checkpoint(pthfile):
     model.classifier = get_classifier(
         input_size=checkpoint["input_size"],
         output_size=checkpoint["output_size"],
-        hidden_layers=checkpoint["hidden_layers"],
+        hidden_units=checkpoint["hidden_layers"][0],
         # dropout = 0.2
     )
 
