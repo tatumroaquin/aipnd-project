@@ -1,11 +1,7 @@
 import argparse
-import json
 
-import numpy as np
 import torch
-from PIL import Image
 from torch import nn, optim
-from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from torchvision import datasets, models, transforms
 
@@ -77,22 +73,32 @@ def save_checkpoint(arch, epochs, model, optimiser, save_dir):
 
     # extract the number of hidden units in each layer
     hidden_layers = []
-    for layer in model.classifier:
-        if isinstance(layer, torch.nn.Linear):
-            hidden_layers.append(layer.out_features)
-    
+
+    if arch == "vgg":
+        for layer in model.classifier:
+            if isinstance(layer, torch.nn.Linear):
+                hidden_layers.append(layer.out_features)
+    elif arch == "resnet":
+        for layer in model.fc:
+            if isinstance(layer, torch.nn.Linear):
+                hidden_layers.append(layer.out_features)
+
     print(hidden_layers)
 
     checkpoint = {
         "arch": arch,
         "epochs": epochs,
-        "input_size": model.classifier[0].in_features,
         "output_size": 102,
-        "hidden_layers": hidden_layers[:-1],
+        "hidden_layers": hidden_layers,
         "m_state_dict": model.state_dict(),
         "o_state_dict": optimiser.state_dict(),
         "class_to_idx": model.class_to_idx,
     }
+
+    if arch == "vgg":
+        checkpoint["input_size"] = model.classifier[0].in_features
+    elif arch == "resnet":
+        checkpoint["input_size"] = model.fc[0].in_features
 
     torch.save(checkpoint, save_dir + "checkpoint.pth")
 
@@ -102,11 +108,15 @@ def train_network(arch, epochs, learn_rate, hidden_units, has_gpu, data_dir, sav
 
     if arch == "vgg":
         model = models.vgg16(weights=models.VGG16_Weights.DEFAULT)
+        model.classifier = get_classifier(hidden_units=hidden_units)
+        optimiser = optim.SGD(model.classifier.parameters(), lr=learn_rate)
     elif arch == "resnet":
         model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+        model.fc = get_classifier(
+            input_size=model.fc.in_features, hidden_units=hidden_units
+        )
+        optimiser = optim.SGD(model.fc.parameters(), lr=learn_rate)
 
-    model.classifier = get_classifier(hidden_units=hidden_units)
-    optimiser = optim.SGD(model.classifier.parameters(), lr=learn_rate)
     criterion = nn.NLLLoss()
 
     model.to(device)
@@ -120,7 +130,8 @@ def train_network(arch, epochs, learn_rate, hidden_units, has_gpu, data_dir, sav
         for images, labels in image_dataloaders["train"]:
             optimiser.zero_grad()
 
-            images, labels = images.to(device), labels.to(device)
+            images = images.to(device)
+            labels = labels.to(device)
 
             output = model.forward(images)
             train_loss = criterion(output, labels)
