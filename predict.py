@@ -87,6 +87,7 @@ def get_prediction(model, image_path, has_gpu, top_k):
 
 #     return nn.Sequential(*layers)
 
+
 def get_classifier(
     input_size=25088,
     hidden_units=1000,
@@ -108,20 +109,28 @@ def get_classifier(
 def load_checkpoint(pthfile):
     checkpoint = torch.load(pthfile, weights_only=False)
 
-    if checkpoint['arch'] == 'vgg':
+    if checkpoint["arch"] == "vgg":
         model = models.vgg16(weights=models.VGG16_Weights.DEFAULT)
-    elif checkpoint['arch'] == 'resnet':
+    elif checkpoint["arch"] == "resnet":
         model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
 
     for p in model.parameters():
         p.requires_grad = False
 
-    model.classifier = get_classifier(
-        input_size=checkpoint["input_size"],
-        output_size=checkpoint["output_size"],
-        hidden_units=checkpoint["hidden_layers"][0],
-        # dropout = 0.2
-    )
+    if checkpoint["arch"] == "vgg":
+        model.classifier = get_classifier(
+            input_size=checkpoint["input_size"],
+            output_size=checkpoint["output_size"],
+            hidden_units=checkpoint["hidden_layers"][0],
+            # dropout = 0.2
+        )
+    elif checkpoint["arch"] == "resnet":
+        model.fc = get_classifier(
+            input_size=checkpoint["input_size"],
+            output_size=checkpoint["output_size"],
+            hidden_units=checkpoint["hidden_layers"][0],
+            # dropout = 0.2
+        )
 
     model.load_state_dict(checkpoint["m_state_dict"])
     model.class_to_idx = checkpoint["class_to_idx"]
@@ -145,7 +154,7 @@ def get_args():
     parser.add_argument(
         "--top_k",
         type=int,
-        default=1, # flag ommitted print only one prediction
+        default=1,  # flag ommitted print only one prediction
         help="Get Top-K most likely classes for an image",
     )
 
